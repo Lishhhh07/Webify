@@ -872,7 +872,7 @@ export default function CodeEditor() {
   description: "Share URL has been copied to clipboard.",
 });
 
-    } catch (error) {
+    } catch (err) {
       toast.error("Share failed", {
   description: "Could not copy share URL to clipboard.",
 });
@@ -960,7 +960,7 @@ ${code.javascript}
   description: "The shared code has been loaded successfully.",
 });
 
-      } catch (error) {
+      } catch (err) {
         toast.error("Invalid share link", {
   description: "Could not load shared code.",
 });
