@@ -873,6 +873,7 @@ export default function CodeEditor() {
 });
 
     } catch (err) {
+      console.error("Clipboard copy failed:", err);
       toast.error("Share failed", {
   description: "Could not copy share URL to clipboard.",
 });
@@ -961,6 +962,7 @@ ${code.javascript}
 });
 
       } catch (err) {
+        console.error("Clipboard copy failed:", err);
         toast.error("Invalid share link", {
   description: "Could not load shared code.",
 });
