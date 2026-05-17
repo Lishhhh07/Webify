@@ -203,8 +203,7 @@ docs: update README with deployment steps
 - **Language:** TypeScript is used throughout. Avoid `any` types where possible.
 - **Styling:** Use [Tailwind CSS](https://tailwindcss.com/) utility classes. Avoid writing custom CSS unless absolutely necessary.
 - **Components:** Follow existing patterns in `components/ui/`. Use `shadcn/ui` conventions.
-- **Formatting:** The project uses ESLint (`eslint.config.mjs`) and Prettier. Run `npm run lint` before committing.
-- **Imports:** Use absolute imports where configured. Keep imports organized (external → internal → relative).
+- **Formatting:** The project uses ESLint (`eslint.config.mjs`). Run `npm run lint` before committing.
 
 ---
 
