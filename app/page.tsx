@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useMemo, useRef} from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -33,6 +33,7 @@ import {
 import { toast } from 'sonner'
 
 
+import JSZip from "jszip"
 import dynamic from "next/dynamic"
 
 // Dynamically import Monaco Editor to avoid SSR issues
@@ -932,7 +933,24 @@ document.addEventListener('DOMContentLoaded', function() {
 type LayoutType = "split" | "preview" | "code"
 
 export default function CodeEditor() {
-  const [code, setCode] = useState<CodeContent>(templates[0].content)
+  const [code, setCode] = useState<CodeContent>(() => {
+    if (typeof window === 'undefined') return templates[0].content
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const sharedCode = urlParams.get('code')
+      if (sharedCode) return JSON.parse(atob(sharedCode)) as CodeContent
+    } catch {
+      // invalid share URL — fall through
+    }
+    try {
+      const saved = localStorage.getItem('webify_code')
+      if (saved) return JSON.parse(saved) as CodeContent
+    } catch {
+      // corrupted storage — fall through
+    }
+    return templates[0].content
+  })
+
   const [layout, setLayout] = useState<LayoutType>("split")
   const [activeTab, setActiveTab] = useState<keyof CodeContent>("html")
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -943,8 +961,27 @@ export default function CodeEditor() {
     focus: () => void
     trigger: (source: string, handlerId: string, payload?: unknown) => void
   } | null>(null)
+  const codeRef = useRef<CodeContent>(code)
   const htmlValidation = useMemo(() => validateHtmlSyntax(code.html), [code.html])
+// Keep codeRef in sync so beforeunload always has the latest values
+  useEffect(() => {
+    codeRef.current = code
+  }, [code])
 
+  // Auto-save code to localStorage, debounced 500ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem('webify_code', JSON.stringify(code))
+      } catch (err) {
+        // QuotaExceededError — localStorage full, fail silently
+        console.warn('Webify: auto-save failed', err)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [code])
+
+  // empty deps — registers once, codeRef keeps values fresh
   // Initialize theme from storage/preferences on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
@@ -1015,39 +1052,39 @@ export default function CodeEditor() {
   }
 
 
-  const downloadCode = () => {
-    const combinedCode = `<!DOCTYPE html>
+  const downloadCode = async () => {
+    const zip = new JSZip();
+    
+    zip.file("index.html", `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Project</title>
-    <style>
-${code.css}
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 ${code.html}
-    <script>
-${code.javascript}
-    </script>
+    <script src="script.js"></script>
 </body>
-</html>`
+</html>`);
+    
+    zip.file("style.css", code.css);
+    zip.file("script.js", code.javascript);
 
-    const blob = new Blob([combinedCode], { type: "text/html" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "project.html"
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "webify-project.zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
     toast("Download started", {
-  description: "Your project has been downloaded as project.html",
-});
-
+      description: "Your project has been downloaded as webify-project.zip",
+    });
   }
 
   const importCode = () => {
@@ -1264,6 +1301,7 @@ ${code.javascript}
         perform: () => loadTemplate(t),
       })),
     ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout, activeTab, theme, isFullscreen, code])
 
   
