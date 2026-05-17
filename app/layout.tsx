@@ -41,6 +41,16 @@ export const metadata: Metadata = {
   },
 };
 
+const suppressBenignErrorEvents = `(function(){
+  window.addEventListener('error',function(e){
+    if(e&&!(e.error instanceof Error)){
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      console.warn('[suppressed non-Error event]',e.message||e);
+    }
+  },true);
+})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -51,6 +61,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script
+          dangerouslySetInnerHTML={{ __html: suppressBenignErrorEvents }}
+        />
         {children}
       </body>
     </html>
