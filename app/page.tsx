@@ -1165,7 +1165,6 @@ ${code.javascript}
                   javascript: code.javascript,
                 })
               )}`}
-              label="Share"
               />
 
             <Button variant="outline" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
