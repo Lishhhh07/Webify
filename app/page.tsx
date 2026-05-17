@@ -1158,13 +1158,17 @@ ${code.javascript}
             </Button>
 
             <CopyButton
-              text={`${window.location.origin}?code=${btoa(
-                JSON.stringify({
-                  html: code.html,
-                  css: code.css,
-                  javascript: code.javascript,
-                })
-              )}`}
+              text={
+                typeof window !== "undefined"
+                  ? `${window.location.origin}?code=${btoa(
+                      JSON.stringify({
+                        html: code.html,
+                        css: code.css,
+                        javascript: code.javascript,
+                      })
+                    )}`
+                  : ""
+                }
               />
 
             <Button variant="outline" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
