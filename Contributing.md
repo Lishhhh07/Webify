@@ -9,7 +9,7 @@ This project is part of **GirlScript Summer of Code (GSSoC)** and we welcome con
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
+- [Project Structure](#project-structure-detailed)
 - [Development Workflow](#development-workflow)
 - [Making a Contribution](#making-a-contribution)
 - [Commit Message Guidelines](#commit-message-guidelines)
