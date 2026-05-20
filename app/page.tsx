@@ -43,6 +43,7 @@ import { toast } from 'sonner'
 
 
 import JSZip from "jszip"
+import Split from "react-split"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 // Monaco Editor must be loaded client-side only.
@@ -1028,6 +1029,11 @@ export default function CodeEditor() {
   const [activeTab, setActiveTab] = useState<keyof CodeContent>("html")
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [theme, setTheme] = useState<"light" | "dark">("light")
+  const [splitSize, setSplitSize] = useState<number>(() => {
+    if (typeof window === "undefined") return 50
+    const saved = localStorage.getItem("webify_split")
+    return saved ? Number(saved) : 50
+  })
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [autoRun, setAutoRun] = useState(true)
   const [editorWidth, setEditorWidth] = useState(50)
@@ -1117,6 +1123,11 @@ useEffect(() => {
       document.documentElement.classList.remove("dark")
       localStorage.setItem("theme", "light")
     }
+  }
+
+  const handleSplitResize = (sizes: number[]) => {
+    setSplitSize(sizes[0])
+    try { localStorage.setItem("webify_split", String(sizes[0])) } catch {}
   }
 
   useEffect(() => {
@@ -1568,6 +1579,7 @@ ${code.html}
           </div>
         </header>
 
+<<<<<<< HEAD
         {/* Main Content */}
 
        <div
@@ -1785,7 +1797,145 @@ style={{ minWidth: "8px" }}
   title="Live Preview"
   sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
 />
+=======
+      {/* Main Content */}
+     <div className="flex-1 overflow-hidden">
+  {layout === "split" ? (
+    <Split
+      sizes={[splitSize, 100 - splitSize]}
+      minSize={200}
+      gutterSize={6}
+      onDragEnd={handleSplitResize}
+      className="h-full flex"
+      style={{ display: "flex" }}
+    >
+      {/* Editor Panel */}
+      <div className="flex flex-col overflow-hidden h-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as keyof CodeContent)}
+          className="flex-1 flex flex-col h-full"
+        >
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="html" className="flex items-center gap-2 cursor-pointer">
+                <FileText className="w-4 h-4" />
+                HTML
+              </TabsTrigger>
+              <TabsTrigger value="css" className="flex items-center gap-2 cursor-pointer">
+                <Palette className="w-4 h-4" />
+                CSS
+              </TabsTrigger>
+              <TabsTrigger value="javascript" className="flex items-center gap-2 cursor-pointer">
+                <Zap className="w-4 h-4" />
+                JS
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <TabsContent value="html" className="h-full m-0">
+              <MonacoEditor language="html" value={code.html} onChange={(value) => handleCodeChange("html", value)} theme={theme} />
+            </TabsContent>
+            <TabsContent value="css" className="h-full m-0">
+              <MonacoEditor language="css" value={code.css} onChange={(value) => handleCodeChange("css", value)} theme={theme} />
+            </TabsContent>
+            <TabsContent value="javascript" className="h-full m-0">
+              <MonacoEditor language="javascript" value={code.javascript} onChange={(value) => handleCodeChange("javascript", value)} theme={theme} />
+            </TabsContent>
+          </div>
+        </Tabs>
+>>>>>>> 1cc0e2a (feat: add resizable split pane with react-split)
       </div>
+
+      {/* Preview Panel */}
+      <div className="flex flex-col overflow-hidden h-full">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Play className="w-4 h-4 text-green-600" />
+            <span className="font-medium text-gray-900 dark:text-white">Live Preview</span>
+            {htmlValidation.isValid ? (
+              <Badge variant="secondary" className="text-xs">Auto-refresh</Badge>
+            ) : (
+              <Badge variant="destructive" className="text-xs">HTML syntax error</Badge>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => window.open(previewRef.current?.src, "_blank")}>
+            <Maximize2 className="w-4 h-4 mr-2" />
+            Open in new tab
+          </Button>
+        </div>
+        <div className="flex-1 bg-white overflow-hidden">
+          <iframe
+            ref={previewRef}
+            className="w-full h-full border-0"
+            title="Live Preview"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+          />
+        </div>
+      </div>
+    </Split>
+  ) : (
+    // Code-only or Preview-only layouts — no PanelGroup needed, no change from original
+    <div className="flex h-full">
+      {layout === "code" && (
+        <div className="w-full flex flex-col border-r border-gray-200 dark:border-gray-700">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as keyof CodeContent)}
+            className="flex-1 flex flex-col"
+          >
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="html" className="flex items-center gap-2 cursor-pointer">
+                  <FileText className="w-4 h-4" />HTML
+                </TabsTrigger>
+                <TabsTrigger value="css" className="flex items-center gap-2 cursor-pointer">
+                  <Palette className="w-4 h-4" />CSS</TabsTrigger>
+                <TabsTrigger value="javascript" className="flex items-center gap-2 cursor-pointer">
+                  <Zap className="w-4 h-4" />JS
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <div className="flex-1">
+              <TabsContent value="html" className="h-full m-0">
+                <MonacoEditor language="html" value={code.html} onChange={(v) => handleCodeChange("html", v)} theme={theme} />
+              </TabsContent>
+              <TabsContent value="css" className="h-full m-0">
+                <MonacoEditor language="css" value={code.css} onChange={(v) => handleCodeChange("css", v)} theme={theme} />
+              </TabsContent>
+              <TabsContent value="javascript" className="h-full m-0">
+                <MonacoEditor language="javascript" value={code.javascript} onChange={(v) => handleCodeChange("javascript", v)} theme={theme} />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+      )}
+      {layout === "preview" && (
+        <div className="w-full flex flex-col">
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Play className="w-4 h-4 text-green-600" />
+              <span className="font-medium text-gray-900 dark:text-white">Live Preview</span>
+              {htmlValidation.isValid ? (
+                <Badge variant="secondary" className="text-xs">Auto-refresh</Badge>
+              ) : (
+                <Badge variant="destructive" className="text-xs">HTML syntax error</Badge>
+              )}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => window.open(previewRef.current?.src, "_blank")}>
+              <Maximize2 className="w-4 h-4 mr-2" />
+              Open in new tab
+            </Button>
+          </div>
+          <div className="flex-1 bg-white">
+            <iframe ref={previewRef} className="w-full h-full border-0" title="Live Preview"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" />
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+</div>
     </div>
   )}
 
