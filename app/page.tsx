@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 const safeBase64Encode = (str: string) =>
   btoa(unescape(encodeURIComponent(str)));
@@ -24,6 +24,7 @@ import {
   Moon,
   Link as LinkIcon,
   Timer,
+  Camera,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -1102,6 +1103,7 @@ export default function CodeEditor() {
   const [activeTab, setActiveTab] = useState<keyof CodeContent>("html")
   const [theme, setTheme] = useState<"light" | "dark">("light")
   const previewRef = useRef<HTMLIFrameElement>(null)
+  const codeRef = useRef<CodeContent>(code)
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
@@ -1116,6 +1118,7 @@ export default function CodeEditor() {
   }, [])
 
   useEffect(() => {
+    codeRef.current = code 
     const timer = setTimeout(() => {
       try {
         localStorage.setItem("webify_code", JSON.stringify(code))
@@ -1149,6 +1152,92 @@ export default function CodeEditor() {
     setCode(template.content)
     toast.success(`${template.name} loaded`)
   }
+  const exportImage = async () => {
+  const previewIframe = previewRef.current
+  if (!previewIframe) {
+    toast.error("No preview to capture")
+    return
+  }
+
+  const loadingToast = toast.loading("Capturing preview…")
+
+  try {
+    const { default: html2canvas } = await import("html2canvas")
+
+    const width = previewIframe.clientWidth || 800
+    const height = previewIframe.clientHeight || 600
+    const currentCode = codeRef.current
+
+      const combinedHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+  *{box-sizing:border-box}
+  html,body{margin:0!important;padding:0!important;width:${width}px!important;min-height:${height}px!important;}
+  ${currentCode.css}
+  </style></head><body>${currentCode.html}<script>(function(){try{${currentCode.javascript}}catch(e){}})()</script></body></html>`
+      // Off-screen but NOT visibility:hidden — hidden iframes don't paint,
+    // so html2canvas captures a blank canvas
+    const tempIframe = document.createElement("iframe")
+    tempIframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${width}px;height:${height}px;border:none;`
+    document.body.appendChild(tempIframe)
+    tempIframe.srcdoc = combinedHtml
+
+    // Wait for iframe to load
+    await new Promise<void>((resolve) => {
+      tempIframe.addEventListener("load", () => resolve(), { once: true })
+      setTimeout(resolve, 4000)
+    })
+
+    // Extra time for JS inside the iframe to paint
+    await new Promise((r) => setTimeout(r, 500))
+
+    const tempDoc = tempIframe.contentDocument
+    if (!tempDoc?.body) {
+      document.body.removeChild(tempIframe)
+      toast.dismiss(loadingToast)
+      toast.error("Export failed", { description: "Preview not accessible." })
+      return
+    }
+
+      const canvas = await html2canvas(tempDoc.documentElement, {
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: "#ffffff",
+    width,
+    height,
+    logging: false,
+    scale: 1,
+  })
+
+    document.body.removeChild(tempIframe)
+    toast.dismiss(loadingToast)
+
+    // Wrap toBlob in a Promise — plain callback silently swallows failures
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/png")
+    })
+
+    if (!blob) {
+      toast.error("Export failed", { description: "Canvas was empty or tainted." })
+      return
+    }
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "webify-preview.png"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("Image exported!", { description: "Saved as webify-preview.png" })
+
+  } catch (err) {
+    console.error("Export image error:", err)
+    toast.dismiss(loadingToast)
+    toast.error("Export failed", {
+      description: err instanceof Error ? err.message : "Unknown error",
+    })
+  }
+}
 
   const downloadCode = async () => {
     const zip = new JSZip()
@@ -1239,9 +1328,19 @@ export default function CodeEditor() {
           <PreviewErrorBoundary>
             <div className="flex flex-col border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
               <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 py-2 flex items-center gap-2">
-                <Play className="w-4 h-4 text-green-600" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Live Preview</span>
-              </div>
+              <Play className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Live Preview</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportImage}
+                className="ml-auto h-7 text-xs"
+                title="Export preview as PNG"
+              >
+                <Camera className="w-3.5 h-3.5 mr-1.5" />
+                Export Image
+              </Button>
+            </div>
               <iframe ref={previewRef} className="flex-1 w-full border-0 bg-white" title="Live Preview" sandbox="allow-scripts allow-forms allow-popups allow-modals" />
             </div>
           </PreviewErrorBoundary>
